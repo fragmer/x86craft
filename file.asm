@@ -141,6 +141,14 @@ section .text
     push ebp
     mov ebp, esp
     sub esp, 8
+    
+    push ebx
+    mov ebx, [ebp + 8]
+
+    test ebx, ebx
+    je .getchar_return
+
+    mov [ebx + file.status], dword F_NO_DETAILS
 
     push dword NULL
     lea eax, [ebp - 4]
@@ -148,7 +156,7 @@ section .text
     push dword 1
     lea eax, [ebp - 5]
     push eax
-    push dword [ebp + 8]
+    push dword [ebx + file.handle]
     call ReadFile
 
     test eax, eax
@@ -158,19 +166,19 @@ section .text
     jmp .getchar_return
 
     .getchar_error:
-      xor edx, edx
+      mov edx, dword F_READ_ERROR
+
       call GetLastError
       cmp eax, ERROR_HANDLE_EOF
       je .getchar_eof
-
-      xor ecx, ecx
       jmp .getchar_return
 
     .getchar_eof:
-      mov ecx, F_READ_EOF
+      mov [ebx + file.status], dword F_READ_EOF
 
     .getchar_return:
       mov eax, edx
+      pop ebx
       mov esp, ebp
       pop ebp
       ret 4

@@ -1,6 +1,7 @@
 global x86craft
 
 %include "./includes/file.inc"
+extern console_putchar
 
 ;;  struct x86c --- [
 ;;    [struct *net]     -   4 bytes (range 00-03)
@@ -19,8 +20,43 @@ x86c.size    equ 16
 section .text
 
   x86craft:
-    xor eax, eax
-    ret
+    push ebp
+    mov ebp, esp
+    sub esp, 4
+
+    push FILE_READ
+    push filename
+    call file_open
+
+    test eax, eax
+    jz .x86craft_return
+
+    mov ebx, eax
+
+    .x86craft_loop:
+      push ebx
+      call file_getchar
+
+      cmp eax, F_READ_ERROR
+      je .x86craft_unloop
+
+      push eax
+      call console_putchar
+      jmp .x86craft_loop
+
+    .x86craft_unloop:
+      push dword [ebp - 4]
+      call file_close
+
+    .x86craft_return:
+      xor eax, eax
+      mov esp, ebp
+      pop ebp
+      ret
+
+section .data
+
+  filename: db "x86c.cfg", 0
 
 section .bss
 

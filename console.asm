@@ -5,9 +5,13 @@
 global console_putchar
 global console_putstr
 
-extern GetStdHandle
-extern WriteConsoleA
-extern lstrlen
+extern __imp__GetStdHandle@4
+extern __imp__WriteConsoleA@20
+extern __imp__lstrlen@4
+
+%define  GetStdHandle   [__imp__GetStdHandle@4]
+%define WriteConsoleA [__imp__WriteConsoleA@20]
+%define       lstrlen        [__imp__lstrlen@4]
 
 NULL              equ   0
 STD_INPUT_HANDLE  equ -10
