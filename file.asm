@@ -166,7 +166,7 @@ section .text
       push dword [ebp + 16]
       call file_getchar
 
-      cmp eax, READ_ERROR
+      cmp eax, F_READ_ERROR
       je .getline_return
 
       cmp eax, 13

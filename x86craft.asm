@@ -1,10 +1,5 @@
 global x86craft
 
-extern MessageBoxA
-extern ExitProcess
-import MessageBoxA kernel32.dll
-import ExitProcess kernel32.dll
-
 ;;  struct x86c --- [
 ;;    [struct *net]     -   4 bytes (range 00-03)
 ;;    [struct *world]   -   4 bytes (range 04-07)

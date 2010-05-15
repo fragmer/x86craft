@@ -1,4 +1,6 @@
-;;;; module taking care of console i/o
+;; module taking care of console i/o
+;; this module will later on be using the file i/o module as a base for console i/o.
+;; for now, just basic i/o support.
 
 global console_putchar
 global console_putstr
@@ -6,8 +8,6 @@ global console_putstr
 extern GetStdHandle
 extern WriteConsoleA
 extern lstrlen
-
-;;;; This module will later on be using the File I/O module as a base for Console I/O.
 
 NULL              equ   0
 STD_INPUT_HANDLE  equ -10
