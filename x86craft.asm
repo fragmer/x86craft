@@ -1,0 +1,30 @@
+global x86craft
+
+extern MessageBoxA
+extern ExitProcess
+import MessageBoxA kernel32.dll
+import ExitProcess kernel32.dll
+
+;;  struct x86c --- [
+;;    [struct *net]     -   4 bytes (range 00-03)
+;;    [struct *world]   -   4 bytes (range 04-07)
+;;    [struct *config]  -   4 bytes (range 08-11)
+;;    [struct *players] -   4 bytes (range 12-15)
+;;  --- ]               -  16 bytes (range 00-15)
+
+;; struct x86c offsets
+x86c.net     equ 00
+x86c.world   equ 04
+x86c.config  equ 08
+x86c.players equ 12
+x86c.size    equ 16
+
+section .text
+
+  x86craft:
+    xor eax, eax
+    ret
+
+section .bss
+
+  x86c: resb x86c.size
