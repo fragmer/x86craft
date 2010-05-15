@@ -20,8 +20,8 @@ file.size   equ 08
 ;; file status codes
 ;; these will be found in file.status and in some cases in ecx
 F_NO_DETAILS         equ 0
-F_OPEN_CREATED       equ 1
-F_OPEN_INVALID       equ 2
+F_OPEN_FILE_CREATED  equ 1
+F_OPEN_PATH_INVALID  equ 2
 F_OPEN_FLAGS_INVALID equ 3
 F_OPEN_UNKNOWN_ERROR equ 4
 F_READ_EOF           equ 1

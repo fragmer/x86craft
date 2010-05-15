@@ -1,5 +1,7 @@
 global x86craft
 
+%include "./includes/file.inc"
+
 ;;  struct x86c --- [
 ;;    [struct *net]     -   4 bytes (range 00-03)
 ;;    [struct *world]   -   4 bytes (range 04-07)

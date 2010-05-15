@@ -1,4 +1,4 @@
-;;;; module taking care of file i/o
+;; module taking care of file i/o
 
 %define _FILE_ASM
 %include "./includes/file.inc"
@@ -9,11 +9,11 @@ section .text
     push ebp
     mov ebp, esp
     sub esp, 8
-
-    mov ecx, [ebp + 12]
+    
     push ebx
     
     call GetProcessHeap
+    ;; check for valid heap
     mov [ebp - 4], eax
     
     push dword file.size
@@ -22,8 +22,10 @@ section .text
     call HeapAlloc
 
     test eax, eax
-    jz .open_alloc_error ;;;; Very unlikely.
+    jz .open_alloc_error                   ;; Very unlikely.
     mov [ebp - 8], eax
+
+    mov ecx, [ebp + 12]
 
     cmp ecx, FILE_READ
     je .open_read
@@ -32,7 +34,7 @@ section .text
     cmp ecx, FILE_READWRITE
     je .open_readwrite
 
-    mov ebx, F_OPEN_FLAGS_INVALID
+    mov ebx, dword F_OPEN_FLAGS_INVALID
     jmp .open_error
 
     .open_read:
@@ -58,8 +60,8 @@ section .text
 
       cmp eax, INVALID_HANDLE_VALUE
       jne .open_success
-      
-      mov ebx, F_OPEN_INVALID
+
+      mov ebx, F_OPEN_PATH_INVALID
       jmp .open_error
       
     .open_success:
@@ -70,11 +72,13 @@ section .text
       cmp eax, ERROR_ALREADY_EXISTS
       jne .file_created
       
-      mov [edx + file.status], dword F_NO_DETAILS
+      mov [ebx + file.status], dword F_NO_DETAILS
+      xor ebx, ebx
       jmp .open_return
 
     .file_created:
-      mov [ebx + file.status], dword F_OPEN_CREATED
+      mov [ebx + file.status], dword F_OPEN_FILE_CREATED
+      xor ebx, ebx
       jmp .open_return
       
     .open_error:
@@ -83,10 +87,11 @@ section .text
       push dword [ebp - 4]
       call HeapFree
 
-      xor edx, edx   ;;;; mov edx, OPEN_ERROR
+      xor edx, edx
       jmp .open_return
       
     .open_alloc_error:
+      xor edx, edx
       mov ebx, F_OPEN_UNKNOWN_ERROR
 
     .open_return:
@@ -101,13 +106,36 @@ section .text
   file_close:
     push ebp
     mov ebp, esp
+    
+    push ebx
 
-    push dword [ebp + 8]
+    mov ebx, [ebp + 8]
+    test ebx, ebx
+    jz .close_error
+
+    push dword [ebx + file.handle]
     call CloseHandle
+    ;; check for valid close
 
-    mov esp, ebp
-    pop ebp
-    ret 4
+    call GetProcessHeap
+    ;; check for valid heap
+
+    push ebx
+    push dword 0
+    push eax
+    call HeapFree
+
+    xor eax, eax
+    jmp .close_return
+
+    .close_error:
+      mov eax, F_CLOSE_ERROR
+
+    .close_return:
+      pop ebx
+      mov esp, ebp
+      pop ebp
+      ret 4
 
   file_getchar:
     push ebp
