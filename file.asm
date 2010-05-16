@@ -13,14 +13,14 @@ section .text
     push ebx
     
     call GetProcessHeap
-    ;; check for valid heap
+    test eax, eax
+    jz .open_alloc_error                   ;; Very unlikely.
     mov [ebp - 4], eax
     
     push dword file.size
     push dword 0
     push eax
     call HeapAlloc
-
     test eax, eax
     jz .open_alloc_error                   ;; Very unlikely.
     mov [ebp - 8], eax
@@ -65,19 +65,19 @@ section .text
       jmp .open_error
       
     .open_success:
-      mov ebx, [ebp - 8]
-      mov [ebx + file.handle], eax
+      mov edx, [ebp - 8]
+      mov [edx + file.handle], eax
 
       call GetLastError
       cmp eax, ERROR_ALREADY_EXISTS
       jne .file_created
       
-      mov [ebx + file.status], dword F_NO_DETAILS
+      mov [edx + file.status], dword F_NO_DETAILS
       xor ebx, ebx
       jmp .open_return
 
     .file_created:
-      mov [ebx + file.status], dword F_OPEN_FILE_CREATED
+      mov [edx + file.status], dword F_OPEN_FILE_CREATED
       xor ebx, ebx
       jmp .open_return
       
@@ -113,7 +113,7 @@ section .text
     test ebx, ebx
     jz .close_error
 
-    push dword [ebx + file.handle]
+    push dword [ds:ebx + file.handle]
     call CloseHandle
     ;; check for valid close
 
@@ -146,7 +146,7 @@ section .text
     mov ebx, [ebp + 8]
 
     test ebx, ebx
-    je .getchar_return
+    jz .getchar_return
 
     mov [ebx + file.status], dword F_NO_DETAILS
 
@@ -162,11 +162,11 @@ section .text
     test eax, eax
     jz .getchar_error
 
-    movsx edx, byte [ebp - 5]
+    movsx ebx, byte [ebp - 5]
     jmp .getchar_return
 
     .getchar_error:
-      mov edx, dword F_READ_ERROR
+      mov ebx, dword F_READ_ERROR
 
       call GetLastError
       cmp eax, ERROR_HANDLE_EOF
@@ -174,10 +174,11 @@ section .text
       jmp .getchar_return
 
     .getchar_eof:
+      mov ebx, dword [ebp + 8]
       mov [ebx + file.status], dword F_READ_EOF
 
     .getchar_return:
-      mov eax, edx
+      mov eax, ebx
       pop ebx
       mov esp, ebp
       pop ebp
@@ -239,24 +240,29 @@ section .text
   file_write:
     push ebp
     mov ebp, esp
-    sub esp, 4
+    push eax              ;; same as sub esp, 4 but faster.
+    
+    push ebx
+    mov ebx, [ebp + 16]
+    mov [ebx + file.status], dword F_NO_DETAILS
 
     push dword NULL
     lea eax, [ebp - 4]
     push eax
     push dword [ebp + 12]
     push dword [ebp + 8]
-    push dword [ebp + 16]
+    push dword [ebx + file.handle]
     call WriteFile
 
     test eax, eax
     jz .write_error
 
-    mov ecx, [ebp - 4]
+    pop eax
     jmp .write_return
 
     .write_error:
-      xor ecx, ecx
+      mov eax, dword F_WRITE_ERROR
+      pop ecx
 
     .write_return:
       mov esp, ebp

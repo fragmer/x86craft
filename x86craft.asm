@@ -45,7 +45,7 @@ section .text
       jmp .x86craft_loop
 
     .x86craft_unloop:
-      push dword [ebp - 4]
+      push ebx
       call file_close
 
     .x86craft_return:
