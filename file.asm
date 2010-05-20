@@ -5,16 +5,28 @@
 
 section .text
 
+  ;; for now, shit is stored at stack to avoid confusion... :S
+  ;; later on, i'll optimize for more use of registers instead.
+  
+  ;; ------------------------------------------------------
+  ;; ebp + 8  : byte ptr filename                   [dword]
+  ;; ebp + 12 : file access flags                   [dword]
+  ;; ------------------------------------------------------
+  ;; ebp - 4  : ptr process heap                    [dword]
+  ;; ebp - 8  : eax return value (allocated memory) [dword]
+  ;; ebp - 12 : ecx return value (status code)      [dword]
+  ;; ------------------------------------------------------
+
   file_open:
     push ebp
     mov ebp, esp
-    sub esp, 8
-    
-    push ebx
-    
+    sub esp, byte 12
+
+    mov [ebp - 8], dword 0
+
     call GetProcessHeap
     test eax, eax
-    jz .open_alloc_error                   ;; Very unlikely.
+    jz .open_alloc_error                         ;; Very unlikely.
     mov [ebp - 4], eax
     
     push dword file.size
@@ -22,7 +34,7 @@ section .text
     push eax
     call HeapAlloc
     test eax, eax
-    jz .open_alloc_error                   ;; Very unlikely.
+    jz .open_alloc_error                         ;; Very unlikely.
     mov [ebp - 8], eax
 
     mov ecx, [ebp + 12]
@@ -34,7 +46,7 @@ section .text
     cmp ecx, FILE_READWRITE
     je .open_readwrite
 
-    mov ebx, dword F_OPEN_FLAGS_INVALID
+    mov [ebp - 12], dword F_OPEN_FLAGS_INVALID
     jmp .open_error
 
     .open_read:
@@ -61,24 +73,22 @@ section .text
       cmp eax, INVALID_HANDLE_VALUE
       jne .open_success
 
-      mov ebx, F_OPEN_PATH_INVALID
+      mov [ebp - 12], dword F_OPEN_PATH_INVALID
       jmp .open_error
       
     .open_success:
-      mov edx, [ebp - 8]
-      mov [edx + file.handle], eax
+      mov ebx, [ebp - 8]
+      mov [ebx + file.handle], eax
 
       call GetLastError
       cmp eax, ERROR_ALREADY_EXISTS
       jne .file_created
-      
-      mov [edx + file.status], dword F_NO_DETAILS
-      xor ebx, ebx
+
+      mov [ebx + file.status], dword F_NO_DETAILS
       jmp .open_return
 
     .file_created:
-      mov [edx + file.status], dword F_OPEN_FILE_CREATED
-      xor ebx, ebx
+      mov [ebx + file.status], dword F_OPEN_FILE_CREATED
       jmp .open_return
       
     .open_error:
@@ -87,17 +97,14 @@ section .text
       push dword [ebp - 4]
       call HeapFree
 
-      xor edx, edx
       jmp .open_return
-      
+
     .open_alloc_error:
-      xor edx, edx
-      mov ebx, F_OPEN_UNKNOWN_ERROR
+      mov [ebp - 12], dword F_OPEN_UNKNOWN_ERROR
 
     .open_return:
-      mov eax, edx
-      mov ecx, ebx
-      pop ebx
+      mov eax, [ebp - 8]
+      mov ecx, [ebp - 12]
 
       mov esp, ebp
       pop ebp
@@ -106,24 +113,28 @@ section .text
   file_close:
     push ebp
     mov ebp, esp
-    
-    push ebx
 
+    push ebx
     mov ebx, [ebp + 8]
     test ebx, ebx
     jz .close_error
 
-    push dword [ds:ebx + file.handle]
+    push dword [ebx + file.handle]
     call CloseHandle
-    ;; check for valid close
+    test eax, eax
+    jz .close_error
+    ;; should free ebx either way
 
     call GetProcessHeap
-    ;; check for valid heap
+    test eax, eax
+    jz .close_error
 
     push ebx
     push dword 0
     push eax
     call HeapFree
+    test eax, eax
+    jz .close_error
 
     xor eax, eax
     jmp .close_return
@@ -133,53 +144,47 @@ section .text
 
     .close_return:
       pop ebx
-      mov esp, ebp
       pop ebp
       ret 4
 
   file_getchar:
     push ebp
     mov ebp, esp
-    sub esp, 8
+    sub esp, byte 8
     
-    push ebx
-    mov ebx, [ebp + 8]
+    mov eax, [ebp + 8]
 
-    test ebx, ebx
-    jz .getchar_return
+    test eax, eax
+    jz .getchar_error
 
-    mov [ebx + file.status], dword F_NO_DETAILS
+    mov [eax + file.status], dword F_NO_DETAILS
 
     push dword NULL
-    lea eax, [ebp - 4]
-    push eax
+    lea ecx, [ebp - 4]
+    push ecx
     push dword 1
-    lea eax, [ebp - 5]
-    push eax
-    push dword [ebx + file.handle]
+    lea ecx, [ebp - 5]
+    push ecx
+    push dword [eax + file.handle]
     call ReadFile
 
     test eax, eax
     jz .getchar_error
 
-    movsx ebx, byte [ebp - 5]
+    movsx eax, byte [ebp - 5]
     jmp .getchar_return
+    ;; will have to extend error checking
+    ;; right now its fucking borked - ReadFile returns TRUE even though EOF was reached. :S
 
     .getchar_error:
-      mov ebx, dword F_READ_ERROR
-
-      call GetLastError
-      cmp eax, ERROR_HANDLE_EOF
-      je .getchar_eof
-      jmp .getchar_return
+      mov eax, dword F_READ_ERROR
 
     .getchar_eof:
-      mov ebx, dword [ebp + 8]
-      mov [ebx + file.status], dword F_READ_EOF
+      mov eax, dword F_READ_ERROR
+      mov ecx, [ebp + 8]  ;; Since we are here, we have attempted to read from a file, it is not NULL.
+      mov [ecx + file.status], dword F_READ_EOF
 
     .getchar_return:
-      mov eax, ebx
-      pop ebx
       mov esp, ebp
       pop ebp
       ret 4
@@ -187,7 +192,7 @@ section .text
   file_getline:
     push ebp
     mov ebp, esp
-    sub esp, 8
+    sub esp, byte 8
     
     push ebx
     push esi
@@ -240,7 +245,7 @@ section .text
   file_write:
     push ebp
     mov ebp, esp
-    push eax              ;; same as sub esp, 4 but faster.
+    sub esp, byte 4
     
     push ebx
     mov ebx, [ebp + 16]
@@ -265,6 +270,7 @@ section .text
       pop ecx
 
     .write_return:
+      pop ebx
       mov esp, ebp
       pop ebp
       ret 12
