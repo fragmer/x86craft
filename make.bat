@@ -5,7 +5,7 @@ nasm -f win32 -Ox player.asm
 nasm -f win32 -Ox config.asm
 nasm -f win32 -Ox file.asm
 nasm -f win32 -Ox console.asm
-link /NOLOGO /NODEFAULTLIB /ENTRY:x86craft /SUBSYSTEM:CONSOLE /MACHINE:X86 ^
+link /NOLOGO /NODEFAULTLIB /ENTRY:x86craft /SUBSYSTEM:CONSOLE /MACHINE:X86 /OUT:./bin/x86craft.exe ^
 x86craft.obj ^
 net.obj ^
 world.obj ^
