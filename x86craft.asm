@@ -1,8 +1,7 @@
-global x86craft
+%define _X86CRAFT_
+%include "./include/net.inc"
 
 global x86craft
-
-%include "./includes/file.inc"
 
 ;;  struct x86c --- [
 ;;    [struct *net]     -   4 bytes (range 00-03)
@@ -21,17 +20,5 @@ x86c.size    equ 16
 section .text
 
   x86craft:
-    push filename
-    call file_open
-    push eax
-    call file_close
     xor eax, eax
     ret
-
-section .data
-
-  filename: db "x86c.cfg", 0
-
-section .bss
-
-  x86c: resb x86c.size
