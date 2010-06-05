@@ -137,9 +137,9 @@ section .data
 
 section .bss
 
-  fd_read: resb fd.size
-  fd_tmp: resb fd.size
-
   sock: resd 1
   nfds: resd 1
   ai_heartbeat: resd 1
+
+  fd_read: resb fd.size
+  fd_tmp: resb fd.size
