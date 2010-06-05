@@ -20,5 +20,6 @@ x86c.size    equ 16
 section .text
 
   x86craft:
-    xor eax, eax
-    ret
+  call  net_startup
+  xor   eax, eax
+  ret
