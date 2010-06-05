@@ -11,7 +11,9 @@ section .text
   call  lstn
 
   mov   eax, fd_read
-  call  fd_zero
+  mov   [eax + fd.fd_count], dword 0
+  mov   edx, [sock]
+  call  fd_add
 
   xor   eax, eax
   ret
@@ -30,7 +32,7 @@ section .text
   push  esp
   push  0202h
   call  WSAStartup
-  ;; errorchecking?
+  test  eax, eax
 
   add   esp, WSADATA.size
 
@@ -51,7 +53,8 @@ section .text
   push  http_port
   push  hb_url
   call  getaddrinfo
-  ;; errorchecking!
+  test  eax, eax
+  jnz   .err_getai
 
   mov   [esp + ai.ai_flags], dword AI_PASSIVE
 
@@ -61,7 +64,8 @@ section .text
   push  ebx                                      ;; port to listen on
   push  NULL                                     ;; let getaddrinfo resolve our hostname
   call  getaddrinfo
-  ;; errorchecking!
+  test  eax, eax
+  jnz   .err_getai
 
   mov   ebx, [esp]
   add   esp, ai.size
@@ -70,42 +74,53 @@ section .text
   push  dword [ebx + ai.ai_socktype]
   push  dword [ebx + ai.ai_family]
   call  socket
-  ;; errorchecking!
+  test  eax, eax
+  jz    .err_socket
   mov   [sock], eax
 
   push  dword [ebx + ai.ai_addrlen]
   push  dword [ebx + ai.ai_addr]
   push  dword [sock]
   call  bind
-  ;; errorchecking!
+  test  eax, eax
+  jnz   .err_bind
 
   push  ebx
   call  freeaddrinfo
-  ;; errorchecking?
 
   push  0                                        ;; not sure how important this is, might change
   push  dword [sock]
   call  listen
+  test  eax, eax
+  jnz   .err_listen
 
-  xor   eax, eax
-  ret
+  ;;    if we're here, eax is already zero.
+  jmp   .return
+  
+  .err_socket:
+  inc   eax
+  jmp   .return
 
-  fd_zero:                                       ;; zeros out the fd_set* in eax
-  mov   [eax + fd.fd_count], dword 0
+  .err_getai:
+  .err_bind:
+  .err_freeai:
+  .err_listen:
+
+  .return:
   ret
 
   fd_add:                                        ;; adds fd edx to the fd_set* in eax
   mov   ecx, dword [eax + fd.fd_count]           ;; returns 0 on success
   cmp   ecx, 63                                  ;; a maximum of 64 (0-63) fd's per set
-  jb    .add
+  jae   .err_full
 
-  mov   eax, FD_FULL
-  jmp   .return
-
-  .add:
   inc   ecx
   mov   [eax + fd.fd_array + ecx], edx
   xor   eax, eax
+  jmp   .return
+  
+  .err_full:
+  mov   eax, NET_FD_FULL
 
   .return:
   ret
