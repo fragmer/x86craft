@@ -3,6 +3,10 @@
   global net_step
   global net_cleanup
 
+  ;; net error codes
+  NET_NOERR equ 00
+  FD_FULL   equ 01
+
   ;; ws2_32.lib
   extern __imp__WSAStartup@8
   extern __imp__WSACleanup@0
@@ -45,7 +49,6 @@
   fd.fd_count equ 00
   fd.fd_array equ 04
   fd.size equ 68
-
 %else
   extern net_startup
   extern net_step

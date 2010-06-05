@@ -3,8 +3,11 @@
 
 section .text
 
-  ZeroMemory:                                    ;; memory in eax, length in ecx
-  dec   ecx
-  mov   [eax + ecx], byte 0
-  jnz   ZeroMemory
+  MemZero:                                       ;; dst in edi, len in ecx
+  xor   al, al
+  rep   stosb
+  ret
+
+  MemCopy:                                       ;; src in esi, dst in edi, len in ecx
+  rep movsb
   ret

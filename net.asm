@@ -9,7 +9,9 @@ section .text
 
   mov   ebx, str_port                            ;; will later be parsed from configuration
   call  lstn
-  call  init_fd
+
+  mov   eax, fd_read
+  call  fd_zero
 
   xor   eax, eax
   ret
@@ -37,8 +39,8 @@ section .text
   lstn:                                          ;; sets up a listener on eax:edx
   mov   ecx, ai.size
   sub   esp, ecx
-  mov   eax, esp
-  call  ZeroMemory
+  mov   edi, esp
+  call  MemZero
 
   mov   [esp + ai.ai_family], dword PF_INET
   mov   [esp + ai.ai_socktype], dword SOCK_STREAM
@@ -88,8 +90,24 @@ section .text
   xor   eax, eax
   ret
 
-  init_fd:                                       ;; initializes anything that has to do with select
+  fd_zero:                                       ;; zeros out the fd_set* in eax
+  mov   [eax + fd.fd_count], dword 0
+  ret
+
+  fd_add:                                        ;; adds fd edx to the fd_set* in eax
+  mov   ecx, dword [eax + fd.fd_count]           ;; returns 0 on success
+  cmp   ecx, 63                                  ;; a maximum of 64 (0-63) fd's per set
+  jb    .add
+
+  mov   eax, FD_FULL
+  jmp   .return
+
+  .add:
+  inc   ecx
+  mov   [eax + fd.fd_array + ecx], edx
   xor   eax, eax
+
+  .return:
   ret
 
   heartbeat:
